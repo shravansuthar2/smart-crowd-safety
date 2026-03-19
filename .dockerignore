@@ -1,0 +1,12 @@
+venv/
+__pycache__/
+*.pyc
+training/
+datasets/
+*.pt
+runs/
+.git/
+.DS_Store
+uploads/videos/
+uploads/missing_persons/
+*.zip
