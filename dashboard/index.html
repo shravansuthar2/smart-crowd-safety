@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Smart Crowd Safety System</title>
+    <link rel="stylesheet" href="style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+
+    <!-- ========== NAVBAR ========== -->
+    <nav class="navbar">
+        <div class="nav-left">
+            <div class="logo">S</div>
+            <h1>Smart Crowd Safety</h1>
+        </div>
+        <div class="nav-right">
+            <div class="nav-status">
+                <span class="status-dot" id="systemStatus"></span>
+                <span id="statusText">System Active</span>
+            </div>
+            <div class="nav-time" id="currentTime"></div>
+        </div>
+    </nav>
+
+    <!-- ========== STATS BAR ========== -->
+    <div class="container">
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-icon crowd-icon">C</div>
+                <div class="stat-info">
+                    <h3>Crowd Count</h3>
+                    <div class="stat-number" id="crowdCount">0</div>
+                    <span class="stat-label">Current Density</span>
+                    <div class="stat-bar">
+                        <div class="stat-bar-fill" id="crowdBar" style="width: 0%"></div>
+                    </div>
+                </div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon alert-icon">!</div>
+                <div class="stat-info">
+                    <h3>Active Alerts</h3>
+                    <div class="stat-number red" id="activeAlerts">0</div>
+                    <span class="stat-label">Unresolved</span>
+                </div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon person-icon">?</div>
+                <div class="stat-info">
+                    <h3>Missing Persons</h3>
+                    <div class="stat-number yellow" id="missingCount">0</div>
+                    <span class="stat-label">Registered</span>
+                </div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon camera-icon">R</div>
+                <div class="stat-info">
+                    <h3>Cameras</h3>
+                    <div class="stat-number green" id="cameraCount">0 / 0</div>
+                    <span class="stat-label">Online</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- ========== MAIN CONTENT GRID ========== -->
+        <div class="main-grid">
+
+            <!-- LEFT: Live Feed Panel -->
+            <div class="panel">
+                <div class="panel-header">
+                    <h2>Live Feed</h2>
+                    <select class="select" id="cameraSelect">
+                        <option value="upload">Upload Image</option>
+                        <option value="webcam">Webcam</option>
+                        <option value="cam1">Camera 1 - Entrance</option>
+                        <option value="cam2">Camera 2 - Gate A</option>
+                    </select>
+                </div>
+
+                <div class="video-container">
+                    <img id="liveFrame" src="" alt="Live Feed">
+                    <canvas id="detectionCanvas"></canvas>
+                    <div class="video-overlay" id="videoOverlay">
+                        <div class="upload-area" id="uploadArea">
+                            <div class="upload-icon">^</div>
+                            <p>Drag & drop video here</p>
+                            <p class="upload-sub">or click to browse (.mp4, .avi, .mov)</p>
+                        </div>
+                    </div>
+                    <!-- Detection result badge -->
+                    <div class="detection-badge" id="detectionBadge" style="display:none">
+                        <span id="badgeText"></span>
+                    </div>
+                </div>
+
+                <input type="file" id="videoUpload" accept="video/*" hidden>
+
+                <div class="controls">
+                    <button onclick="document.getElementById('videoUpload').click()" class="btn btn-purple">
+                        Upload Video
+                    </button>
+                </div>
+
+                <!-- Video Processing Status -->
+                <div class="video-status" id="videoStatus" style="display:none">
+                    <div class="video-status-header">
+                        <h3>Video Processing</h3>
+                        <span class="video-progress-text" id="videoProgressText">0%</span>
+                    </div>
+                    <div class="video-progress-bar">
+                        <div class="video-progress-fill" id="videoProgressFill" style="width:0%"></div>
+                    </div>
+                    <div class="video-info" id="videoInfo"></div>
+                    <div class="video-stats" id="videoStats" style="display:none"></div>
+                    <div class="video-timeline" id="videoTimeline" style="display:none"></div>
+                    <button class="btn btn-primary" id="btnDownloadVideo" style="display:none" onclick="downloadVideo()">
+                        Download Processed Video
+                    </button>
+                </div>
+
+                <!-- Auto Detection Status -->
+                <div class="auto-detect-status" id="autoDetectStatus" style="display:none">
+                    <div class="detect-progress">
+                        <div class="detect-step" id="stepCrowd">
+                            <span class="step-dot"></span> Crowd Density
+                        </div>
+                        <div class="detect-step" id="stepEmergency">
+                            <span class="step-dot"></span> Emergency
+                        </div>
+                        <div class="detect-step" id="stepHeatmap">
+                            <span class="step-dot"></span> Heatmap
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Detection Results -->
+                <div class="detection-results" id="detectionResults" style="display:none">
+                    <h3>Detection Results</h3>
+                    <div id="resultsContent"></div>
+                </div>
+            </div>
+
+            <!-- RIGHT: Alerts Panel -->
+            <div class="panel">
+                <div class="panel-header">
+                    <h2>Alerts</h2>
+                    <div style="display:flex;gap:8px;align-items:center">
+                        <button onclick="clearAllAlerts()" class="btn btn-sm btn-danger">Clear All</button>
+                        <select class="select" id="alertFilter" onchange="filterAlerts()">
+                            <option value="all">All Alerts</option>
+                            <option value="crowd_density">Crowd Density</option>
+                            <option value="emergency">Emergency</option>
+                            <option value="missing_person">Missing Person</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="alerts-list" id="alertsList">
+                    <div class="empty-state">
+                        <div class="empty-icon">i</div>
+                        <p>No alerts yet</p>
+                        <span>Alerts will appear here when detected</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ========== MISSING PERSONS SECTION ========== -->
+        <div class="panel full-width">
+            <div class="panel-header">
+                <h2>Missing Person Finder</h2>
+                <span class="badge" id="missingBadge">0 registered</span>
+            </div>
+
+            <div class="missing-person-form">
+                <div class="form-group">
+                    <label>Person Name</label>
+                    <input type="text" id="personName" placeholder="Enter full name" class="input">
+                </div>
+                <div class="form-group">
+                    <label>Details</label>
+                    <input type="text" id="personDetails" placeholder="Age, clothing, last seen" class="input">
+                </div>
+                <div class="form-group">
+                    <label>Photo</label>
+                    <div class="photo-upload">
+                        <input type="file" id="personPhoto" accept="image/*" class="input" onchange="previewPersonPhoto(this)">
+                        <img id="personPhotoPreview" src="" style="display:none" class="photo-preview">
+                    </div>
+                </div>
+                <div class="form-actions">
+                    <button onclick="registerPerson()" class="btn btn-primary">Register Missing Person</button>
+                </div>
+            </div>
+
+            <div class="persons-grid" id="personsList">
+                <div class="empty-state small">
+                    <p>No missing persons registered</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- ========== DENSITY HEATMAP SECTION ========== -->
+        <div class="panel full-width">
+            <div class="panel-header">
+                <h2>Crowd Density Heatmap</h2>
+                <span class="stat-label">Visual representation of crowd distribution</span>
+            </div>
+            <div class="heatmap-container">
+                <img id="heatmapImage" src="" alt="Heatmap" style="display:none">
+                <div class="empty-state small" id="heatmapEmpty">
+                    <p>Upload an image and click "Heatmap" to generate</p>
+                </div>
+            </div>
+            <div class="heatmap-legend">
+                <span class="legend-item"><span class="legend-color low"></span> Low Density</span>
+                <span class="legend-item"><span class="legend-color medium"></span> Medium Density</span>
+                <span class="legend-item"><span class="legend-color high"></span> High Density</span>
+                <span class="legend-item"><span class="legend-color critical"></span> Critical</span>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- ========== FOOTER ========== -->
+    <footer class="footer">
+        <p>Smart Crowd Safety System v1.0</p>
+        <p>Last updated: <span id="lastUpdated">--</span></p>
+    </footer>
+
+    <!-- ========== TOAST NOTIFICATION ========== -->
+    <div class="toast-container" id="toastContainer"></div>
+
+    <script src="firebase-config.js"></script>
+    <script src="app.js"></script>
+</body>
+</html>

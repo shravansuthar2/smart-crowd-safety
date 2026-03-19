@@ -1,0 +1,41 @@
+# Python
+venv/
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+dist/
+build/
+
+# AI Models (too large for git, downloaded automatically)
+*.pt
+
+# Uploads (user data)
+backend/uploads/videos/
+backend/uploads/missing_persons/
+backend/uploads/*.jpg
+backend/uploads/*.png
+
+# Training data (too large)
+training/runs/
+training/dataset/
+training/dataset_real/
+training/fire_dataset/
+training/fire_kaggle/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+
+# Environment
+.env
+*.env
+serviceAccountKey.json
+
+# Cache
+.cache/
+*.cache
