@@ -366,6 +366,14 @@ function startVideoPolling(jobId) {
                 originalImageData = `data:image/jpeg;base64,${data.original_frame}`;
             }
 
+            // Update live heatmap
+            if (data.current_heatmap) {
+                const heatmapImg = document.getElementById("heatmapImage");
+                heatmapImg.src = `data:image/jpeg;base64,${data.current_heatmap}`;
+                heatmapImg.style.display = "block";
+                document.getElementById("heatmapEmpty").style.display = "none";
+            }
+
             // Update crowd count LIVE with current frame's people count
             if (data.current_people !== undefined) {
                 document.getElementById("crowdCount").textContent = data.current_people;

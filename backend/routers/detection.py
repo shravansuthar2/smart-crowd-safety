@@ -12,7 +12,7 @@ API endpoints for all detection modules:
 
 from fastapi import APIRouter, UploadFile, File, WebSocket, WebSocketDisconnect
 from fastapi.responses import StreamingResponse
-from modules.crowd_density import detect_crowd, get_density_heatmap
+from modules.crowd_density import detect_crowd, get_density_heatmap, get_video_heatmap, reset_heatmap
 from modules.pickpocket import detect_pickpocket
 from modules.emergency import detect_emergency
 from modules.face_finder import search_in_frame as face_search, embedding_cache
@@ -192,6 +192,9 @@ def process_video_worker(job_id: str, video_path: str, output_path: str, process
     job["resolution"] = f"{width}x{height}"
     job["status"] = "processing"
 
+    # Reset heatmap for new video
+    reset_heatmap()
+
     # Output video writer
     fourcc = cv2.VideoWriter_fourcc(*'mp4v')
     writer = cv2.VideoWriter(output_path, fourcc, fps, (width, height))
@@ -349,6 +352,10 @@ def process_video_worker(job_id: str, video_path: str, output_path: str, process
                 "fight": emg_result["fight_detected"],
                 "face_match": matched_names
             })
+
+            # Generate TEMPORAL heatmap (accumulates over time with decay)
+            heatmap_frame = get_video_heatmap(frame.copy(), crowd_result["boxes"])
+            job["current_heatmap"] = encode_frame(heatmap_frame)
 
             # Store latest annotated frame + ORIGINAL clean frame + people count
             job["latest_frame"] = encode_frame(annotated)
@@ -510,6 +517,10 @@ async def video_status(job_id: str):
     # Include original clean frame for face search
     if job.get("original_frame"):
         response["original_frame"] = job["original_frame"]
+
+    # Include live heatmap
+    if job.get("current_heatmap"):
+        response["current_heatmap"] = job["current_heatmap"]
 
     # Include stats when completed
     if job["status"] == "completed":
