@@ -204,6 +204,8 @@ def process_video_worker(job_id: str, video_path: str, output_path: str, process
     overcrowded_frames = 0
     emergency_frames = 0
     frame_results = []
+    # Track per-person face matches (one alert per person, not per frame)
+    person_match_tracker = {}  # name → {"first_frame", "last_frame", "first_time", "last_time", "best_conf", "count"}
 
     try:
         while True:
@@ -231,11 +233,11 @@ def process_video_worker(job_id: str, video_path: str, output_path: str, process
 
             if crowd_result["is_overcrowded"]:
                 overcrowded_frames += 1
-                if overcrowded_frames <= 5:  # limit alerts
+                if overcrowded_frames == 1:  # only FIRST time
                     create_alert(
                         alert_type="crowd_density", severity="high",
-                        location=f"video_frame_{frame_num}",
-                        details={"count": people_count, "frame": frame_num}
+                        location="video",
+                        details={"count": people_count, "first_seen": f"frame {frame_num}"}
                     )
                     alerts_generated += 1
 
@@ -246,7 +248,7 @@ def process_video_worker(job_id: str, video_path: str, output_path: str, process
                             or emg_result["fight_detected"])
             if has_emergency:
                 emergency_frames += 1
-                if emergency_frames <= 10:
+                if emergency_frames == 1:  # only FIRST time
                     emergency_types = []
                     if emg_result["fire_detected"]:
                         emergency_types.append("fire")
@@ -256,9 +258,9 @@ def process_video_worker(job_id: str, video_path: str, output_path: str, process
                         emergency_types.append("fight")
                     create_alert(
                         alert_type="emergency", severity="critical",
-                        location=f"video_frame_{frame_num}",
+                        location="video",
                         details={
-                            "frame": frame_num,
+                            "first_seen": f"frame {frame_num}",
                             "types": emergency_types
                         }
                     )
@@ -270,22 +272,46 @@ def process_video_worker(job_id: str, video_path: str, output_path: str, process
             # 4. Face Search (auto-detect missing persons)
             # MUST be AFTER annotated is set, so boxes draw on the FINAL frame
             face_matches = []
-            if embedding_cache:  # only if persons are registered
+            if embedding_cache:
                 try:
                     face_matches = face_search(frame, draw_on=annotated)
                     if face_matches:
                         for match in face_matches:
-                            create_alert(
-                                alert_type="missing_person", severity="critical",
-                                location=f"video_frame_{frame_num}",
-                                details={
-                                    "person_name": match["person_name"],
-                                    "confidence": match["confidence"],
-                                    "frame": frame_num,
-                                    "time": round(frame_num / fps, 1)
+                            name = match["person_name"]
+                            conf = match["confidence"]
+                            t = round(frame_num / fps, 1)
+
+                            if name not in person_match_tracker:
+                                # FIRST TIME this person is seen → send alert IMMEDIATELY
+                                person_match_tracker[name] = {
+                                    "first_frame": frame_num,
+                                    "last_frame": frame_num,
+                                    "first_time": t,
+                                    "last_time": t,
+                                    "best_conf": conf,
+                                    "count": 1,
+                                    "alert_id": None
                                 }
-                            )
-                            alerts_generated += 1
+                                # Create alert right now
+                                alert = create_alert(
+                                    alert_type="missing_person", severity="critical",
+                                    location="video",
+                                    details={
+                                        "person_name": name,
+                                        "confidence": conf,
+                                        "first_seen": f"frame {frame_num} ({t}s)",
+                                        "status": "tracking"
+                                    }
+                                )
+                                alerts_generated += 1
+                                print(f"[Video] ALERT: {name} first seen at frame {frame_num} ({t}s)")
+                            else:
+                                # Already seen → just update tracker (no new alert)
+                                tracker = person_match_tracker[name]
+                                tracker["last_frame"] = frame_num
+                                tracker["last_time"] = t
+                                tracker["best_conf"] = max(tracker["best_conf"], conf)
+                                tracker["count"] += 1
                 except Exception as e:
                     print(f"[Video] Face search error at frame {frame_num}: {e}")
 
@@ -348,6 +374,10 @@ def process_video_worker(job_id: str, video_path: str, output_path: str, process
     for f in frame_results:
         for name in f.get("face_match", []):
             all_matched_persons.add(name)
+
+    # Update existing alerts with final frame range (no new alerts)
+    for name, tracker in person_match_tracker.items():
+        print(f"[Video] {name}: seen in frames {tracker['first_frame']}-{tracker['last_frame']} ({tracker['count']} frames)")
 
     job["status"] = "completed"
     job["progress"] = 100
