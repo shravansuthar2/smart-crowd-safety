@@ -26,7 +26,7 @@ FIGHT_ELBOW_ANGLE = 120         # degrees - bent arm threshold for fighting stan
 
 # ========== FIREBASE ==========
 FIREBASE_CREDENTIALS = os.path.join(os.path.dirname(__file__), "serviceAccountKey.json")
-FIREBASE_STORAGE_BUCKET = "your-project-id.appspot.com"  # Replace with your bucket
+FIREBASE_STORAGE_BUCKET = "smart-crowd-safety-418b4.firebasestorage.app"
 
 # ========== PATHS ==========
 UPLOAD_DIR = os.path.join(os.path.dirname(__file__), "uploads")

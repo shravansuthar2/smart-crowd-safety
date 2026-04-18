@@ -1,25 +1,20 @@
 import os
 import firebase_admin
-from firebase_admin import credentials, firestore, storage
-from config import FIREBASE_CREDENTIALS, FIREBASE_STORAGE_BUCKET
+from firebase_admin import credentials, firestore
+from config import FIREBASE_CREDENTIALS
 
 # ========== FIREBASE INITIALIZATION ==========
-# Check if serviceAccountKey.json exists
-# If not, run in LOCAL MODE (no Firebase, store in memory)
+# Firestore only (Storage now requires Blaze paid plan — we store photos locally instead)
 
 USE_FIREBASE = os.path.exists(FIREBASE_CREDENTIALS)
 
 if USE_FIREBASE:
     cred = credentials.Certificate(FIREBASE_CREDENTIALS)
-    firebase_admin.initialize_app(cred, {
-        "storageBucket": FIREBASE_STORAGE_BUCKET
-    })
+    firebase_admin.initialize_app(cred)
     db = firestore.client()
-    bucket = storage.bucket()
-    print("[Firebase] Connected successfully")
+    print("[Firebase] Firestore connected successfully")
 else:
     db = None
-    bucket = None
     print("[Firebase] serviceAccountKey.json not found — running in LOCAL MODE")
     print("[Firebase] Alerts and data will be stored in memory (lost on restart)")
 
@@ -82,14 +77,8 @@ def clear_alerts():
 
 # ========== IMAGE UPLOAD ==========
 def upload_image(file_path: str, destination: str):
-    """Upload image to Firebase Storage or return local path"""
-    if USE_FIREBASE:
-        blob = bucket.blob(destination)
-        blob.upload_from_filename(file_path)
-        blob.make_public()
-        return blob.public_url
-    else:
-        return f"/uploads/{os.path.basename(file_path)}"
+    """Return local path (Firebase Storage requires paid Blaze plan, so we serve from disk)"""
+    return f"/uploads/missing_persons/{os.path.basename(file_path)}"
 
 
 # ========== MISSING PERSONS ==========
