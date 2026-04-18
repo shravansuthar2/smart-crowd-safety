@@ -735,7 +735,6 @@ function renderAlerts(alerts) {
                 ${getAlertTitle(a.type)}
             </h4>
             <p>${formatAlertDetails(a.details)}</p>
-            ${a.ai_advice ? `<p class="ai-advice">🤖 Gemini: ${a.ai_advice}</p>` : ''}
             <div class="alert-meta">
                 <span class="alert-time">${formatTime(a.timestamp)}</span>
                 <div class="alert-actions">

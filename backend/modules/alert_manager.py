@@ -6,7 +6,6 @@ Stores alerts in Firebase Firestore or local memory (fallback).
 
 from datetime import datetime, timezone
 from firebase_config import save_alert, get_alerts, update_alert, clear_alerts as firebase_clear_alerts
-from modules.gemini_advisor import get_alert_advice
 
 
 def create_alert(alert_type: str, severity: str, location: str, details: dict = None):
@@ -22,14 +21,11 @@ def create_alert(alert_type: str, severity: str, location: str, details: dict = 
     Returns:
         dict - the created alert
     """
-    ai_advice = get_alert_advice(alert_type, severity, location, details)
-
     alert = {
         "type": alert_type,
         "severity": severity,
         "location": location,
         "details": details or {},
-        "ai_advice": ai_advice,
         "timestamp": datetime.now(timezone.utc).isoformat(),
         "status": "active",
         "acknowledged": False
@@ -37,8 +33,6 @@ def create_alert(alert_type: str, severity: str, location: str, details: dict = 
 
     save_alert(alert)
     print(f"[Alert] {severity.upper()} - {alert_type} at {location}")
-    if ai_advice:
-        print(f"[Gemini] {ai_advice}")
 
     return alert
 
