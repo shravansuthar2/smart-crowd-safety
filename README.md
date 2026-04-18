@@ -15,18 +15,28 @@ AI-powered crowd safety monitoring system for railway stations, stadiums, and fe
 
 **Live Demo**: Click "Open Logs" button at top right to see backend logs. Visit `/dashboard` path on the Space URL to access the UI.
 
-## ⚠️ Setup — Download Fire Detection Model
+## Setup — Clone and Run
 
-The fire detection model (`fire_model.pt`, 273 MB) is too large for GitHub. Download it from Hugging Face:
+The fire detection model (`fire_model.pt`, 273 MB) is included via **Git LFS** — it downloads automatically with `git clone`.
+
+**Important:** You must have Git LFS installed BEFORE cloning:
 
 ```bash
-# Option 1: Download via huggingface_hub
-pip install huggingface_hub
-python -c "from huggingface_hub import hf_hub_download; import shutil; p = hf_hub_download(repo_id='SHOU-ISD/fire-and-smoke', filename='best_ns.pt'); shutil.copy(p, 'backend/fire_model.pt')"
+# Install Git LFS first
+# Mac:    brew install git-lfs
+# Linux:  sudo apt install git-lfs
+# Windows: download from https://git-lfs.com/
 
-# Option 2: Manual download
-# Visit: https://huggingface.co/SHOU-ISD/fire-and-smoke/blob/main/best_ns.pt
-# Download and save as: backend/fire_model.pt
+git lfs install
+
+# Then clone normally — model file downloads automatically
+git clone https://github.com/shravansuthar2/smart-crowd-safety.git
+cd smart-crowd-safety
+```
+
+If you cloned without LFS first, run this to fetch the model:
+```bash
+git lfs pull
 ```
 
 ## Features
