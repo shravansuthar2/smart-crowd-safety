@@ -1,5 +1,5 @@
 // ========== CONFIGURATION ==========
-const API_URL = "http://localhost:8000/api";
+const API_URL = `${window.location.origin}/api`;
 let currentFile = null;
 let originalImageData = null;  // Store original CLEAN image (no annotations)
 let allAlerts = [];
