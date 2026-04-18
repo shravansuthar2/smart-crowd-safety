@@ -7,8 +7,8 @@ __pycache__/
 dist/
 build/
 
-# AI Models (too large for GitHub — download separately, see README)
-*.pt
+# AI Models — handled by Git LFS, but exclude auto-downloaded base models
+yolov8*.pt
 
 # Training runs output
 runs/
