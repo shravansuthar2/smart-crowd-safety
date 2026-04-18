@@ -18,7 +18,8 @@ RUN apt-get update && apt-get install -y \
 COPY backend/requirements.txt .
 RUN pip install --no-cache-dir --upgrade pip && \
     pip install --no-cache-dir -r requirements.txt && \
-    pip install --no-cache-dir insightface onnxruntime
+    pip install --no-cache-dir insightface onnxruntime && \
+    pip install --no-cache-dir "numpy<2"
 
 # Copy backend code
 COPY backend/ ./
