@@ -15,6 +15,20 @@ AI-powered crowd safety monitoring system for railway stations, stadiums, and fe
 
 **Live Demo**: Click "Open Logs" button at top right to see backend logs. Visit `/dashboard` path on the Space URL to access the UI.
 
+## ⚠️ Setup — Download Fire Detection Model
+
+The fire detection model (`fire_model.pt`, 273 MB) is too large for GitHub. Download it from Hugging Face:
+
+```bash
+# Option 1: Download via huggingface_hub
+pip install huggingface_hub
+python -c "from huggingface_hub import hf_hub_download; import shutil; p = hf_hub_download(repo_id='SHOU-ISD/fire-and-smoke', filename='best_ns.pt'); shutil.copy(p, 'backend/fire_model.pt')"
+
+# Option 2: Manual download
+# Visit: https://huggingface.co/SHOU-ISD/fire-and-smoke/blob/main/best_ns.pt
+# Download and save as: backend/fire_model.pt
+```
+
 ## Features
 
 - **Crowd Density Detection** — YOLOv8 counts people in video feeds, alerts when overcrowded
