@@ -12,8 +12,25 @@ try:
     if GEMINI_API_KEY:
         import google.generativeai as genai
         genai.configure(api_key=GEMINI_API_KEY)
-        GEMINI_MODEL = genai.GenerativeModel("gemini-2.0-flash")
-        print("[Gemini] Advisor loaded — Google AI active")
+
+        candidates = [
+            "gemini-flash-latest",
+            "gemini-2.5-flash",
+            "gemini-2.0-flash",
+            "gemini-1.5-flash-latest",
+            "gemini-pro",
+        ]
+        try:
+            available = {m.name.split("/")[-1] for m in genai.list_models()
+                         if "generateContent" in m.supported_generation_methods}
+            print(f"[Gemini] Available models: {sorted(available)[:10]}")
+        except Exception as e:
+            available = set()
+            print(f"[Gemini] list_models failed: {e}")
+
+        chosen = next((m for m in candidates if m in available), None) or (sorted(available)[0] if available else candidates[0])
+        GEMINI_MODEL = genai.GenerativeModel(chosen)
+        print(f"[Gemini] Advisor loaded — using {chosen}")
     else:
         print("[Gemini] No GEMINI_API_KEY set — advisor disabled")
 except Exception as e:
