@@ -7,9 +7,11 @@ __pycache__/
 dist/
 build/
 
-# AI Models — exclude large base models but keep our trained fire model
-yolov8*.pt
-!backend/fire_model.pt
+# AI Models (too large for GitHub — download separately, see README)
+*.pt
+
+# Training runs output
+runs/
 
 # Uploads (user data)
 backend/uploads/videos/
