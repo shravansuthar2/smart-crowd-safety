@@ -55,9 +55,10 @@ def detect_emergency(frame):
                             cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 0, 255), 2)
             elif "smoke" in label:
                 emergency["smoke_detected"] = True
-                cv2.rectangle(frame, (x1, y1), (x2, y2), (128, 128, 128), 2)
+                # Dark gray for smoke
+                cv2.rectangle(frame, (x1, y1), (x2, y2), (50, 50, 50), 3)
                 cv2.putText(frame, f"SMOKE {conf:.0%}", (x1, y1 - 10),
-                            cv2.FONT_HERSHEY_SIMPLEX, 0.7, (128, 128, 128), 2)
+                            cv2.FONT_HERSHEY_SIMPLEX, 0.7, (50, 50, 50), 2)
 
     if emergency["fire_detected"]:
         oh, ow = frame.shape[:2]

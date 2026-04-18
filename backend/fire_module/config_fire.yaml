@@ -1,0 +1,32 @@
+# Fire Detection Configuration
+# =============================
+
+# Path to YOLO fire model weights
+# Use "fire_model.pt" for custom trained, or any YOLOv8 .pt file
+model_path: "fire_model.pt"
+
+# Minimum confidence to count as fire detection (0.7 = zero false positives)
+confidence_threshold: 0.7
+
+# Minimum confidence to trigger a critical alert
+alert_threshold: 0.7
+
+# Device: "auto" (GPU if available, else CPU), "cpu", or "cuda:0"
+device: "auto"
+
+# Maximum frame dimension for inference (resize for speed)
+# Larger = more accurate but slower. 640 is standard for YOLOv8.
+inference_size: 640
+
+# Fire persistence: keep fire status active for N frames after last detection
+# Prevents blinking in video output. Set to 0 to disable.
+persist_frames: 15
+
+# Enable/disable fire detection globally
+enabled: true
+
+# Bounding box styling
+box_color: [0, 0, 255]       # BGR: Red
+box_thickness: 3
+label_font_scale: 0.7
+banner_enabled: true          # Show "FIRE DETECTED!" banner at top

@@ -134,6 +134,13 @@ async def detect_emergency_endpoint(file: UploadFile = File(...)):
             details={"type": "fire"}
         )
 
+    if result.get("smoke_detected", False):
+        create_alert(
+            alert_type="emergency", severity="high",
+            location="uploaded_frame",
+            details={"type": "smoke"}
+        )
+
     if result["fall_detected"]:
         create_alert(
             alert_type="emergency", severity="critical",
@@ -205,10 +212,65 @@ def process_video_worker(job_id: str, video_path: str, output_path: str, process
     max_people = 0
     alerts_generated = 0
     overcrowded_frames = 0
+    fire_alert_sent = False  # ensures only one fire alert per video
+    smoke_alert_sent = False  # ensures only one smoke alert per video
     emergency_frames = 0
     frame_results = []
     # Track per-person face matches (one alert per person, not per frame)
     person_match_tracker = {}  # name → {"first_frame", "last_frame", "first_time", "last_time", "best_conf", "count"}
+
+    # Anti-flicker: cache last annotation state AND box coordinates for skipped frames
+    last_fire_active = False
+    last_smoke_active = False
+    last_overcrowded = False
+    last_people_count = 0
+    last_fire_boxes = []  # list of (x1, y1, x2, y2, conf) for fire boxes
+    last_smoke_boxes = []  # list of (x1, y1, x2, y2, conf) for smoke boxes
+
+    # Direct access to fire model for getting box coordinates
+    from modules.emergency import FIRE_MODEL
+
+    def get_fire_smoke_boxes(img):
+        """Get fire/smoke box coordinates without drawing."""
+        fire_boxes = []
+        smoke_boxes = []
+        if FIRE_MODEL is None:
+            return fire_boxes, smoke_boxes
+        try:
+            results = FIRE_MODEL(img, conf=0.5, verbose=False)
+            for r in results:
+                for b in r.boxes:
+                    x1, y1, x2, y2 = map(int, b.xyxy[0])
+                    cf = float(b.conf[0])
+                    label = r.names[int(b.cls[0])].lower()
+                    if "fire" in label or "flame" in label:
+                        fire_boxes.append((x1, y1, x2, y2, cf))
+                    elif "smoke" in label:
+                        smoke_boxes.append((x1, y1, x2, y2, cf))
+        except Exception:
+            pass
+        return fire_boxes, smoke_boxes
+
+    def draw_cached_boxes(img, fire_boxes, smoke_boxes):
+        """Draw cached boxes + banner on a frame."""
+        for (x1, y1, x2, y2, cf) in fire_boxes:
+            cv2.rectangle(img, (x1, y1), (x2, y2), (0, 0, 255), 3)
+            cv2.putText(img, f"FIRE {cf:.0%}", (x1, y1 - 10),
+                        cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 0, 255), 2)
+        for (x1, y1, x2, y2, cf) in smoke_boxes:
+            cv2.rectangle(img, (x1, y1), (x2, y2), (50, 50, 50), 3)
+            cv2.putText(img, f"SMOKE {cf:.0%}", (x1, y1 - 10),
+                        cv2.FONT_HERSHEY_SIMPLEX, 0.7, (50, 50, 50), 2)
+        if fire_boxes or smoke_boxes:
+            oh, ow = img.shape[:2]
+            overlay = img.copy()
+            color = (0, 0, 200) if fire_boxes else (50, 50, 50)
+            cv2.rectangle(overlay, (0, 0), (ow, 45), color, -1)
+            img = cv2.addWeighted(overlay, 0.7, img, 0.3, 0)
+            text = "FIRE DETECTED!" if fire_boxes else "SMOKE DETECTED!"
+            cv2.putText(img, text, (ow // 2 - 130, 32),
+                        cv2.FONT_HERSHEY_SIMPLEX, 0.9, (255, 255, 255), 2)
+        return img
 
     try:
         while True:
@@ -222,6 +284,9 @@ def process_video_worker(job_id: str, video_path: str, output_path: str, process
 
             # Process every Nth frame (skip frames for speed)
             if frame_num % process_every_n != 0:
+                # For skipped frames: redraw cached boxes to prevent flickering
+                if last_fire_boxes or last_smoke_boxes:
+                    frame = draw_cached_boxes(frame, last_fire_boxes, last_smoke_boxes)
                 writer.write(frame)
                 continue
 
@@ -244,17 +309,41 @@ def process_video_worker(job_id: str, video_path: str, output_path: str, process
                     )
                     alerts_generated += 1
 
-            # 2. Emergency Detection (fire + fall + fight)
-            emg_frame = frame.copy()
-            emg_result = detect_emergency(emg_frame)
-            has_emergency = (emg_result["fire_detected"] or emg_result["fall_detected"]
-                            or emg_result["fight_detected"])
+            # 2. Emergency Detection (fire + smoke + fall + fight)
+            # Run on clean frame for accuracy
+            emg_result = detect_emergency(frame.copy())
+            smoke_detected = emg_result.get("smoke_detected", False)
+
+            # IMMEDIATE separate alert for fire when first detected
+            if emg_result["fire_detected"] and not fire_alert_sent:
+                fire_alert_sent = True
+                create_alert(
+                    alert_type="emergency", severity="critical",
+                    location="video",
+                    details={"type": "fire", "first_seen": f"frame {frame_num}"}
+                )
+                alerts_generated += 1
+
+            # IMMEDIATE separate alert for smoke when first detected
+            if smoke_detected and not smoke_alert_sent:
+                smoke_alert_sent = True
+                create_alert(
+                    alert_type="emergency", severity="high",
+                    location="video",
+                    details={"type": "smoke", "first_seen": f"frame {frame_num}"}
+                )
+                alerts_generated += 1
+
+            has_emergency = (emg_result["fire_detected"] or smoke_detected
+                            or emg_result["fall_detected"] or emg_result["fight_detected"])
             if has_emergency:
                 emergency_frames += 1
                 if emergency_frames == 1:  # only FIRST time
                     emergency_types = []
                     if emg_result["fire_detected"]:
                         emergency_types.append("fire")
+                    if smoke_detected:
+                        emergency_types.append("smoke")
                     if emg_result["fall_detected"]:
                         emergency_types.append("fall")
                     if emg_result["fight_detected"]:
@@ -271,6 +360,22 @@ def process_video_worker(job_id: str, video_path: str, output_path: str, process
 
             # ===== Draw combined results on frame =====
             annotated = crowd_result["frame"]
+
+            # Draw fire/smoke boxes on the final annotated frame (so they appear in output)
+            if emg_result["fire_detected"] or emg_result.get("smoke_detected", False):
+                detect_emergency(annotated)
+
+            # Update cache for next skipped frames (prevents flickering)
+            last_fire_active = emg_result["fire_detected"]
+            last_smoke_active = emg_result.get("smoke_detected", False)
+            last_overcrowded = crowd_result["is_overcrowded"]
+            last_people_count = people_count
+
+            # Save actual box coordinates for skipped-frame redraw
+            if last_fire_active or last_smoke_active:
+                last_fire_boxes, last_smoke_boxes = get_fire_smoke_boxes(frame)
+            else:
+                last_fire_boxes, last_smoke_boxes = [], []
 
             # 4. Face Search (auto-detect missing persons)
             # MUST be AFTER annotated is set, so boxes draw on the FINAL frame

@@ -7,8 +7,9 @@ __pycache__/
 dist/
 build/
 
-# AI Models (too large for git, downloaded automatically)
-*.pt
+# AI Models — exclude large base models but keep our trained fire model
+yolov8*.pt
+!backend/fire_model.pt
 
 # Uploads (user data)
 backend/uploads/videos/

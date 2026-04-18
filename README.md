@@ -1,6 +1,19 @@
+---
+title: Smart Crowd Safety System
+emoji: 🚨
+colorFrom: red
+colorTo: blue
+sdk: docker
+app_port: 7860
+pinned: false
+license: mit
+---
+
 # Smart Crowd Safety System
 
 AI-powered crowd safety monitoring system for railway stations, stadiums, and festivals.
+
+**Live Demo**: Click "Open Logs" button at top right to see backend logs. Visit `/dashboard` path on the Space URL to access the UI.
 
 ## Features
 
